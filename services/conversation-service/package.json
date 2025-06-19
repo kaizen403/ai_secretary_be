@@ -1,0 +1,19 @@
+{
+  "name": "conversation-service",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "@langchain/groq": "^0.3.25",
+    "@langchain/core": "^0.3.25",
+    "@langchain/agents": "^0.3.25",
+    "@pinecone-database/pinecone": "^5.1.0",
+    "elevenlabs": "^1.4.2",
+    "kafkajs": "^2.5.5",
+    "twilio": "^4.0.0-beta.2",
+    "dotenv": "^16.0.0"
+  }
+}
