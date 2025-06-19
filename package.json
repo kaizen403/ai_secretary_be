@@ -15,12 +15,7 @@
     "eslint": "^9.29.0"
   },
   "workspaces": [
-    "api-gateway",
-    "conversation-service",
-    "services/api-gateway",
-    "services/conversation-service",
-    "services/reminder-worker",
-    "services/common"
+    "services/*"
   ],
   "dependencies": {
     "@graphql-yoga/node": "^3.9.1",

@@ -7,13 +7,12 @@
     "dev": "nodemon src/index.js"
   },
   "dependencies": {
-    "@langchain/groq": "^0.3.25",
-    "@langchain/core": "^0.3.25",
-    "@langchain/agents": "^0.3.25",
-    "@pinecone-database/pinecone": "^5.1.0",
-    "elevenlabs": "^1.4.2",
-    "kafkajs": "^2.5.5",
-    "twilio": "^4.0.0-beta.2",
-    "dotenv": "^16.0.0"
+    "@langchain/groq": "^0.2.3",
+    "langchain": "^0.3.28",
+    "@pinecone-database/pinecone": "^6.1.1",
+    "elevenlabs": "^1.59.0",
+    "kafkajs": "^2.2.4",
+    "twilio": "^5.7.1",
+    "dotenv": "^16.5.0"
   }
 }
