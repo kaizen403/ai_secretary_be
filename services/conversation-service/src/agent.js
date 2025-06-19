@@ -2,14 +2,11 @@
 require("dotenv").config();
 const { ChatGroq } = require("@langchain/groq");
 const { initializeAgentExecutor, runnableTool } = require("langchain/agents");
-const { Pinecone } = require("@pinecone-database/pinecone");
-const { db } = require("../../common/src/db");
 
-const pc = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY,
-  environment: process.env.PINECONE_ENVIRONMENT,
-});
-const index = pc.Index(process.env.PINECONE_INDEX);
+const { Pinecone } = require("@pinecone-database/pinecone");
+
+const { db } = require("../../common/src/db");
+const { producer } = require("./kafka");
 
 async function runAgent(phone, text) {
   const llm = new ChatGroq({
@@ -31,18 +28,59 @@ async function runAgent(phone, text) {
     name: "memorySearch",
     description: "Search user notes for relevant context",
     func: async (query) => {
-      const res = await index.query({
-        topK: 5,
-        includeMetadata: true,
-        query,
-        namespace: phone,
+      const notes = await db.note.findMany({
+        where: {
+          user: { phone },
+          content: { contains: query, mode: "insensitive" },
+        },
+        take: 5,
       });
-      return JSON.stringify(res.matches);
+      return notes.map((n) => n.content).join("\n");
+    },
+  });
+
+  const addNote = runnableTool({
+    name: "addNote",
+    description: "Save a note for future reference",
+    func: async (content) => {
+      const user = await db.user.upsert({
+        where: { phone },
+        create: { phone, name: phone },
+        update: {},
+      });
+      await db.note.create({ data: { userId: user.id, content } });
+      return "Note saved";
+    },
+  });
+
+  const createReminder = runnableTool({
+    name: "createReminder",
+    description:
+      "Schedule a reminder. Input JSON: {text: string, when: ISO8601 string}",
+    func: async (data) => {
+      let payload;
+      try {
+        payload = typeof data === "string" ? JSON.parse(data) : data;
+      } catch {
+        return "Invalid reminder payload";
+      }
+      await producer.send({
+        topic: "reminders",
+        messages: [
+          {
+            key: phone,
+            value: JSON.stringify([
+              { metadata: { phone, text: payload.text, when: payload.when } },
+            ]),
+          },
+        ],
+      });
+      return `Reminder scheduled for ${payload.when}`;
     },
   });
 
   const executor = await initializeAgentExecutor(
-    [calendarTool, memorySearch],
+    [calendarTool, memorySearch, addNote, createReminder],
     llm,
     { agentType: "zero-shot-react" },
   );

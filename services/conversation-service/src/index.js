@@ -2,7 +2,7 @@
 require("dotenv").config();
 const { consumer, producer } = require("./kafka");
 const { runAgent } = require("./agent");
-const ElevenLabs = require("elevenlabs");
+const { VapiClient } = require("@vapi-ai/server-sdk");
 const Twilio = require("twilio");
 
 async function start() {
@@ -13,7 +13,7 @@ async function start() {
     fromBeginning: false,
   });
 
-  const eleven = new ElevenLabs({ apiKey: process.env.ELEVEN_API_KEY });
+  const vapi = new VapiClient({ token: process.env.VAPI_API_TOKEN });
   const twilio = Twilio(
     process.env.TWILIO_ACCOUNT_SID,
     process.env.TWILIO_AUTH_TOKEN,
@@ -27,19 +27,16 @@ async function start() {
       const { phone, text } = JSON.parse(message.value.toString());
       const agentResponse = await runAgent(phone, text);
 
-      // generate TTS
-      const audio = await eleven.textToSpeech.generate({
-        prompt: agentResponse.output,
-        voiceId: process.env.ELEVEN_VOICE_ID,
-        format: "mp3",
-      });
-
-      // send via Twilio
       if (text.startsWith("call:")) {
-        await twilio.calls.create({
-          url: `https://handler.twilio.com/twiml/EH_XYZ?MediaUrl=${encodeURIComponent(audio.url)}`,
-          to: phone,
-          from: process.env.TWILIO_PHONE_NUMBER,
+        await vapi.calls.create({
+          customer: { number: phone },
+          assistant: {
+            firstMessage: agentResponse.output,
+            voice: {
+              provider: "vapi",
+              voiceId: process.env.VAPI_VOICE_ID || "Elliot",
+            },
+          },
         });
       } else {
         await twilio.messages.create({
@@ -49,20 +46,6 @@ async function start() {
         });
       }
 
-      // schedule reminders if any
-      if (
-        agentResponse.toolInvocations?.some((t) => t.name === "createReminder")
-      ) {
-        await producer.send({
-          topic: "reminders",
-          messages: [
-            {
-              key: phone,
-              value: JSON.stringify(agentResponse.toolInvocations),
-            },
-          ],
-        });
-      }
     },
   });
 }
