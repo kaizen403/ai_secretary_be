@@ -1,7 +1,7 @@
 // services/conversation-service/src/agent.js
 require("dotenv").config();
 const { ChatGroq } = require("@langchain/groq");
-const { initializeAgentExecutor, runnableTool } = require("@langchain/agents");
+const { initializeAgentExecutor, runnableTool } = require("langchain/agents");
 const { Pinecone } = require("@pinecone-database/pinecone");
 const { db } = require("../../common/src/db");
 
