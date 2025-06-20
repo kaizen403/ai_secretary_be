@@ -1,7 +1,7 @@
 // services/reminder-worker/src/index.js
 require("dotenv").config();
 const { Kafka } = require("kafkajs");
-const Twilio = require("twilio");
+const { VapiClient } = require("@vapi-ai/server-sdk");
 const { parseISO, isBefore } = require("date-fns");
 
 async function start() {
@@ -13,10 +13,7 @@ async function start() {
   await consumer.connect();
   await consumer.subscribe({ topic: "reminders", fromBeginning: false });
 
-  const twilio = Twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN,
-  );
+  const vapi = new VapiClient({ token: process.env.VAPI_API_TOKEN });
 
   console.log("⏰ Reminder Worker listening…");
 
@@ -28,10 +25,15 @@ async function start() {
         const when = parseISO(r.metadata.when);
         if (isBefore(when, new Date())) continue;
         setTimeout(async () => {
-          await twilio.messages.create({
-            body: r.metadata.text,
-            to: r.metadata.phone,
-            from: process.env.TWILIO_PHONE_NUMBER,
+          await vapi.calls.create({
+            customer: { number: r.metadata.phone },
+            assistant: {
+              firstMessage: r.metadata.text,
+              voice: {
+                provider: "vapi",
+                voiceId: process.env.VAPI_VOICE_ID || "Elliot",
+              },
+            },
           });
         }, when.getTime() - Date.now());
       }
